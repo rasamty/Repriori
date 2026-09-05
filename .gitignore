@@ -1,0 +1,23 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+
+# Visual Studio cache/options
+.vs/
+*.user
+*.suo
+*.tmp
+*.Backup.tmp
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Terraform local plugin/cache — never commit
+**/.terraform/
+
+# Local SQLite databases and uploaded files — never commit real data
+*.db
+*.db-shm
+*.db-wal
+**/App_Data/
