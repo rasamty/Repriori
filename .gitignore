@@ -21,3 +21,18 @@ Thumbs.db
 *.db-shm
 *.db-wal
 **/App_Data/
+
+# Word and Excel files — never version-controlled, repo-wide, no exceptions
+*.doc
+*.docx
+*.docm
+*.dotx
+*.dotm
+*.xls
+*.xlsx
+*.xlsm
+*.xlsb
+*.xltx
+*.xltm
+~$*.doc*
+~$*.xls*
