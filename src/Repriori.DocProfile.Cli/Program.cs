@@ -7,7 +7,9 @@
 // a profile contains, the bug is in Repriori.DocProfile, not here.
 
 using Repriori.DocProfile;
+using Repriori.DocProfile.Comparing;
 using Repriori.DocProfile.Unpacking;
+using Repriori.DocProfile.Validation;
 
 if (args.Length == 0)
 {
@@ -25,6 +27,7 @@ try
     {
         "extract" => RunExtract(args[1..]),
         "unpack" => RunUnpack(args[1..]),
+        "compare" => RunCompare(args[1..]),
         "-h" or "--help" or "help" => RunHelp(),
         var unknown => UnknownCommand(unknown),
     };
@@ -87,6 +90,89 @@ int RunUnpack(string[] rest)
     return 0;
 }
 
+int RunCompare(string[] rest)
+{
+    // golden and submission are the first two arguments that are not part of
+    // an option — not necessarily rest[0] and rest[1], since --rules <path> and
+    // --show-diffs could come first. This walks the list once, skipping an
+    // option and (for --rules specifically) the value straight after it.
+    var positional = new List<string>();
+    for (var i = 0; i < rest.Length; i++)
+    {
+        if (rest[i] == "--show-diffs") continue;
+        if (rest[i] == "--rules") { i++; continue; } // also skip the path that follows it
+        positional.Add(rest[i]);
+    }
+
+    if (positional.Count < 2)
+    {
+        Console.Error.WriteLine("Usage: docprofile compare <golden> <submission> [--rules <rules.json>] [--show-diffs]");
+        Console.Error.WriteLine("       <golden> and <submission> may each be a .docx file or an already-extracted profile .json file.");
+        return 1;
+    }
+
+    var goldenPath = positional[0];
+    var submissionPath = positional[1];
+    var rulesPath = ReadOptionValue(rest, "--rules");
+    var showDiffs = rest.Contains("--show-diffs");
+
+    var ruleSet = rulesPath is null ? ComparisonRuleSet.Default() : ComparisonRuleSet.FromFile(rulesPath);
+    var result = ProfileComparisonEngine.Compare(LoadProfileJson(goldenPath), LoadProfileJson(submissionPath), ruleSet);
+
+    PrintComparisonReport(result, showDiffs);
+    return result.Passed ? 0 : 1;
+}
+
+// A .docx is extracted on the fly (reusing Phase 3's extractor); anything else
+// is read as an already-extracted profile .json. This lets compare take either
+// two raw documents or two already-extracted profiles, without needing two
+// separate commands for what is really one decision (extract first, or not).
+string LoadProfileJson(string path)
+{
+    if (Path.GetExtension(path).Equals(".docx", StringComparison.OrdinalIgnoreCase))
+    {
+        return WordProfileExtractor.FromDocx(path);
+    }
+
+    var readable = FileValidation.EnsureFileIsReadable(path);
+    if (!readable.IsOk) throw new IOException(readable.Reason);
+    return File.ReadAllText(path);
+}
+
+void PrintComparisonReport(ComparisonResult result, bool showDiffs)
+{
+    Console.WriteLine(result.Passed ? "PASS" : "FAIL");
+    Console.WriteLine();
+
+    if (result.Violations.Count == 0)
+    {
+        Console.WriteLine("No rule violations.");
+    }
+    else
+    {
+        Console.WriteLine($"{result.Violations.Count} rule violation(s):");
+        foreach (var violation in result.Violations)
+        {
+            Console.WriteLine($"  - {violation.Rule.Field}: {violation.Rule.Description}");
+            Console.WriteLine($"      {violation.Detail}");
+        }
+    }
+
+    Console.WriteLine();
+    Console.WriteLine($"{result.Diffs.Count} field(s) differ between golden and submission (informational — not all of these are rule violations, and not all rule violations show up here; see 7.2 in the Milestone 1 document for why those are two separate lists).");
+    if (showDiffs)
+    {
+        foreach (var diff in result.Diffs)
+        {
+            Console.WriteLine($"  {diff}");
+        }
+    }
+    else if (result.Diffs.Count > 0)
+    {
+        Console.WriteLine("  (use --show-diffs to list them)");
+    }
+}
+
 int RunHelp()
 {
     PrintUsage();
@@ -104,7 +190,7 @@ void PrintUsage()
 {
     Console.WriteLine(
         """
-        docprofile — extract or unpack a .docx file
+        docprofile — extract, unpack, or compare .docx files
 
         Usage:
           docprofile extract <file.docx> [-o <output.json>]   Extract a format profile as JSON.
@@ -112,6 +198,9 @@ void PrintUsage()
           docprofile unpack <file.docx> -o <output-folder>     Extract the file's real internal XML
                                                                 parts to a folder, so you can open and
                                                                 read them yourself.
+          docprofile compare <golden> <submission>             Compare two profiles (or two .docx
+                             [--rules <rules.json>]             files, extracted on the fly) against
+                             [--show-diffs]                     a rule set. Exit code 0 = pass, 1 = fail.
           docprofile --help                                    Show this message.
         """);
 }
