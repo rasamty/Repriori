@@ -40,7 +40,12 @@ internal static class DocumentPropertiesExtractor
 
         var protection = settings?.GetFirstChild<DocumentProtection>();
         JsonHelpers.Set(section, "isProtected", protection is not null);
-        JsonHelpers.Set(section, "protectionType", protection?.Edit?.Value.ToString());
+        // Real-file bug, found by running this against an actual protected
+        // document rather than a synthetic fixture: protection.Edit.Value's own
+        // ToString() prints "DocumentProtectionValues { }" in this SDK version —
+        // not the readable value ("readOnly", "forms", etc.). .InnerText reads
+        // the real underlying XML attribute text directly and is correct.
+        JsonHelpers.Set(section, "protectionType", protection?.Edit?.InnerText);
 
         var writeProtection = settings?.GetFirstChild<WriteProtection>();
         JsonHelpers.Set(section, "readOnlyRecommended", writeProtection?.Recommended?.Value);

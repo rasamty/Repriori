@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Repriori.DocProfile.Cli/Repriori.DocProfile.Cli.csproj" />
     <Project Path="src/Repriori.DocProfile/Repriori.DocProfile.csproj" />
   </Folder>
   <Folder Name="/tests/">

@@ -210,6 +210,35 @@ internal static class TestDocxBuilder
         return stream;
     }
 
+    /// <summary>
+    /// A document with read-only DocumentProtection set — a direct regression
+    /// fixture for the real bug found running the CLI against a real protected
+    /// file in Phase 5: DocumentProtection.Edit.Value.ToString() prints
+    /// "DocumentProtectionValues { }" in this SDK version rather than the actual
+    /// value, because these "*Values" types are lightweight wrapper structs here,
+    /// not plain enums. Nothing in the synthetic Phase 4 fixtures happened to set
+    /// DocumentProtection at all, which is exactly why this slipped through until
+    /// a real file was tried.
+    /// </summary>
+    public static MemoryStream WithReadOnlyProtection()
+    {
+        var stream = new MemoryStream();
+        using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document, autoSave: false))
+        {
+            var mainPart = doc.AddMainDocumentPart();
+            mainPart.Document = new Document(new Body(new Paragraph(new Run(new Text("Body text.")))));
+
+            var settingsPart = mainPart.AddNewPart<DocumentSettingsPart>();
+            settingsPart.Settings = new Settings(
+                new DocumentProtection { Edit = DocumentProtectionValues.ReadOnly, Enforcement = true });
+            settingsPart.Settings.Save();
+
+            mainPart.Document.Save();
+        }
+        stream.Position = 0;
+        return stream;
+    }
+
     /// <summary>Sets the document's core Title/Creator properties (File &gt; Info fields).</summary>
     public static MemoryStream WithCoreProperties(string title, string creator)
     {
