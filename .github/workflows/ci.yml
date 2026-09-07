@@ -1,0 +1,56 @@
+# CI — build and test the whole solution.
+#
+# Right now "the whole solution" and "Repriori.DocProfile" are almost the same
+# thing (Repriori.slnx only contains DocProfile, its CLI, and its tests) — this
+# workflow is written to build/test the solution as a whole rather than naming
+# individual projects, so it keeps working without changes as later milestones
+# add more packages to the same solution. If a future milestone ever wants a
+# faster, narrower check for one package alone, that's a new workflow file to
+# add then, not a reason to rewrite this one now.
+name: CI
+
+on:
+  push:
+    branches-ignore: [main] # feedback on every push to a feature branch, before a PR even exists
+  pull_request:
+    branches: [main] # the check that actually shows up on the PR itself
+
+jobs:
+  build-and-test:
+    # windows-latest, deliberately: everything in this solution has only ever
+    # been built and tested on Windows so far, including file-locking tests
+    # (FileValidationTests, WordProfileExtractorTests) whose exact behaviour can
+    # differ subtly between operating systems. Matching the environment this
+    # project was actually developed and tested on removes one variable while
+    # everything is still new; adding Linux/macOS to a build matrix later is a
+    # reasonable next step once there's a reason to need it (Milestone 9's Azure
+    # hosting, for instance), not something to guess at now.
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore Repriori.slnx
+
+      - name: Build
+        run: dotnet build Repriori.slnx --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test Repriori.slnx --no-build --configuration Release --logger "trx;LogFileName=test-results.trx" --results-directory TestResults
+
+      - name: Upload test results
+        # if: always() means this still runs (and the results are still
+        # downloadable from the Actions run) even when the Test step above
+        # failed — exactly the situation where you most want to see them.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults
