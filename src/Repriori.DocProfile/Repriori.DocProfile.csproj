@@ -14,6 +14,9 @@
     <!-- Bundled into the compiled DLL itself, so the profile schema travels with the
          library and callers never need to ship or locate this file separately. -->
     <EmbeddedResource Include="WordFormatComparer.json" />
+    <!-- Same reasoning for the comparer's default rule set — ComparisonRuleSet.Default()
+         reads this straight out of the assembly, no separate file to lose track of. -->
+    <EmbeddedResource Include="default-comparison-rules.json" />
   </ItemGroup>
 
   <ItemGroup>

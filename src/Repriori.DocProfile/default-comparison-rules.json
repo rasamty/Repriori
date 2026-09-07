@@ -1,0 +1,42 @@
+{
+  "notes": "Default rule set for ComparisonRuleSet.Default(). Edit or copy this file freely — a custom set is just a JSON file loaded with ComparisonRuleSet.FromFile(path); nothing here needs to change to change what a format check actually requires.",
+  "rules": [
+    {
+      "field": "revisions.hasUnacceptedTrackedChanges",
+      "type": "mustEqual",
+      "value": false,
+      "description": "Tracked changes must be fully accepted or rejected before the document can pass."
+    },
+    {
+      "field": "comments.unresolved",
+      "type": "mustEqual",
+      "value": 0,
+      "description": "Every review comment must be resolved before the document can pass. (Null — resolution status unknown — also fails this rule, on purpose: an unknown state is not the same as a clean one.)"
+    },
+    {
+      "field": "page.orientation",
+      "type": "mustMatchGolden",
+      "description": "Page orientation must match the approved template."
+    },
+    {
+      "field": "page.paperHint",
+      "type": "mustMatchGolden",
+      "description": "Paper size must match the approved template."
+    },
+    {
+      "field": "fonts.bodyTypeface",
+      "type": "mustMatchGolden",
+      "description": "Body typeface must match the approved template."
+    },
+    {
+      "field": "fonts.bodySizePt",
+      "type": "mustMatchGolden",
+      "description": "Body font size must match the approved template."
+    },
+    {
+      "field": "fonts.heading1Typeface",
+      "type": "mustMatchGolden",
+      "description": "Heading 1 typeface must match the approved template."
+    }
+  ]
+}
