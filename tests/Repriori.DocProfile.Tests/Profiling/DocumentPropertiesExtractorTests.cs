@@ -48,4 +48,23 @@ public class DocumentPropertiesExtractorTests
 
         Assert.False(root["document"]!["isProtected"]!.GetValue<bool>());
     }
+
+    [Fact]
+    public void Extract_reports_the_real_protection_type_not_the_wrapper_types_own_ToString()
+    {
+        // Regression test for the real Phase 5 bug: protection.Edit.Value.ToString()
+        // printed "DocumentProtectionValues { }" against a real protected file —
+        // .InnerText is what actually reads "readOnly" correctly. No Phase 4
+        // fixture exercised this path at all, which is exactly why it took a
+        // real file to find it.
+        using var docx = TestDocxBuilder.WithReadOnlyProtection();
+        using var word = WordprocessingDocument.Open(docx, isEditable: false);
+        var root = new JsonObject();
+
+        DocumentPropertiesExtractor.Extract(word, root);
+        var document = root["document"]!;
+
+        Assert.True(document["isProtected"]!.GetValue<bool>());
+        Assert.Equal("readOnly", document["protectionType"]!.GetValue<string>());
+    }
 }
