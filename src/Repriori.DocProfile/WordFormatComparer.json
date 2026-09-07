@@ -1,0 +1,155 @@
+{
+  "profileId": null,
+  "sourceFile": null,
+  "extractedAt": null,
+  "extractorVersion": "1.1.0",
+  "notes": "Filled by WordProfileExtractor from an example .docx. null = not present or not reliably readable. Do not invent values.",
+
+  "document": {
+    "coreTitle": null,
+    "coreSubject": null,
+    "coreCreator": null,
+    "coreLastModifiedBy": null,
+    "coreCategory": null,
+    "coreRevision": null,
+    "language": null,
+    "applicationName": null,
+    "isProtected": null,
+    "protectionType": null,
+    "readOnlyRecommended": null,
+    "writeReservation": null,
+    "compatibilityMode": null
+  },
+
+  "revisions": {
+    "hasUnacceptedTrackedChanges": null,
+    "insertedRunCount": null,
+    "deletedRunCount": null,
+    "moveCount": null
+  },
+
+  "comments": {
+    "hasComments": null,
+    "total": null,
+    "resolved": null,
+    "unresolved": null
+  },
+
+  "page": {
+    "sectionCount": null,
+    "estimatedPageCount": null,
+    "widthMm": null,
+    "heightMm": null,
+    "orientation": null,
+    "paperHint": null,
+    "marginsMm": {
+      "top": null, "bottom": null, "left": null, "right": null,
+      "header": null, "footer": null, "gutter": null
+    },
+    "differentFirstPageHeaderFooter": null,
+    "differentOddEvenHeaderFooter": null,
+    "columns": null
+  },
+
+  "headersFooters": {
+    "hasDefaultHeader": null,
+    "hasDefaultFooter": null,
+    "hasFirstHeader": null,
+    "hasFirstFooter": null,
+    "hasEvenHeader": null,
+    "hasEvenFooter": null,
+    "headerTextSample": null,
+    "footerTextSample": null,
+    "hasPageNumberField": null,
+    "headerImageCount": null
+  },
+
+  "logo": {
+    "headerContainsImage": null,
+    "headerImageNameOrAltSample": null,
+    "likelyCompanyLogo": null,
+    "likelyCompanyLogoReason": null
+  },
+
+  "structure": {
+    "paragraphCount": null,
+    "wordCountEstimate": null,
+    "heading1Texts": [],
+    "heading2Texts": [],
+    "heading3Texts": [],
+    "heading4Texts": [],
+    "hasTableOfContentsField": null,
+    "tocInstruction": null,
+    "tocTypeHint": null,
+    "tocStyleName": null,
+    "hasRevisionHistoryHeading": null,
+    "hasPurposeHeading": null,
+    "hasIntroductionHeading": null,
+    "hasScopeHeading": null,
+    "hasReferencesHeading": null,
+    "sectionOrder": []
+  },
+
+  "styles": {
+    "styleNamesPresent": [],
+    "normal":    { "typeface": null, "sizePt": null, "bold": null, "italic": null, "colorHex": null },
+    "heading1":  { "typeface": null, "sizePt": null, "bold": null, "italic": null, "colorHex": null },
+    "heading2":  { "typeface": null, "sizePt": null, "bold": null, "italic": null, "colorHex": null },
+    "heading3":  { "typeface": null, "sizePt": null, "bold": null, "italic": null, "colorHex": null },
+    "heading4":  { "typeface": null, "sizePt": null, "bold": null, "italic": null, "colorHex": null },
+    "title":     { "typeface": null, "sizePt": null, "bold": null, "italic": null, "colorHex": null },
+    "caption":   { "typeface": null, "sizePt": null, "bold": null, "italic": null, "colorHex": null },
+    "header":    { "typeface": null, "sizePt": null, "bold": null, "italic": null, "colorHex": null },
+    "footer":    { "typeface": null, "sizePt": null, "bold": null, "italic": null, "colorHex": null },
+    "toc1":      { "typeface": null, "sizePt": null, "bold": null, "italic": null, "colorHex": null },
+    "toc2":      { "typeface": null, "sizePt": null, "bold": null, "italic": null, "colorHex": null }
+  },
+
+  "fonts": {
+    "typefacesUsed": [],
+    "bodyTypeface": null,
+    "bodySizePt": null,
+    "bodyColorHex": null,
+    "heading1Typeface": null, "heading1SizePt": null, "heading1ColorHex": null,
+    "heading2Typeface": null, "heading2SizePt": null, "heading2ColorHex": null,
+    "heading3Typeface": null, "heading3SizePt": null, "heading3ColorHex": null,
+    "heading4Typeface": null, "heading4SizePt": null, "heading4ColorHex": null
+  },
+
+  "colors": {
+    "nonBlackWhiteHexUsed": [],
+    "bodyUsesOnlyBlackOrWhite": null
+  },
+
+  "emphasis": {
+    "note": "Measured from run characters, not from style names.",
+    "body":     { "chars": null, "boldPct": null, "italicPct": null },
+    "headings": { "chars": null, "boldPct": null, "italicPct": null },
+    "tables":   { "chars": null, "boldPct": null, "italicPct": null }
+  },
+
+  "paragraphs": {
+    "bodyAlignment": null,
+    "bodyLineSpacing": null,
+    "spaceAfterPt": null,
+    "spaceBeforePt": null
+  },
+
+  "tables": {
+    "count": null,
+    "items": []
+  },
+
+  "figures": {
+    "imageCount": null,
+    "captionCount": null,
+    "captionTexts": [],
+    "imagesWithAltText": null,
+    "imagesMissingAltText": null
+  },
+
+  "lists": {
+    "hasBullets": null,
+    "hasNumbering": null
+  }
+}

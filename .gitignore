@@ -1,6 +1,7 @@
 # Build output
 [Bb]in/
 [Oo]bj/
+TestResults/
 
 # Visual Studio cache/options
 .vs/
