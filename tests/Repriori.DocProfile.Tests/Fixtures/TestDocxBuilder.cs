@@ -1,6 +1,8 @@
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
+using A = DocumentFormat.OpenXml.Drawing;
+using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 
 namespace Repriori.DocProfile.Tests.Fixtures;
 
@@ -287,6 +289,264 @@ internal static class TestDocxBuilder
     {
         var bytes = System.Text.Encoding.UTF8.GetBytes("this is plain text, not a zip file");
         return new MemoryStream(bytes);
+    }
+
+    /// <summary>
+    /// A default header, a first-page header, and an even-page header — each with
+    /// distinct text — plus matching footers (the default footer contains a real PAGE
+    /// field via SimpleField, not just literal text that happens to say "page"), a
+    /// two-column section, and TitlePage/EvenAndOddHeaders both set. Deliberately one
+    /// large, realistic fixture rather than several tiny ones: every one of these
+    /// features lives together on the same SectionProperties in a real document, so
+    /// testing them together is more honest than pretending they're independent.
+    /// </summary>
+    public static MemoryStream WithHeadersFootersAndPageFeatures()
+    {
+        var stream = new MemoryStream();
+        using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document, autoSave: false))
+        {
+            var mainPart = doc.AddMainDocumentPart();
+
+            var defaultHeader = mainPart.AddNewPart<HeaderPart>();
+            defaultHeader.Header = new Header(new Paragraph(new Run(new Text("Default header"))));
+            defaultHeader.Header.Save();
+
+            var firstHeader = mainPart.AddNewPart<HeaderPart>();
+            firstHeader.Header = new Header(new Paragraph(new Run(new Text("First-page header"))));
+            firstHeader.Header.Save();
+
+            var evenHeader = mainPart.AddNewPart<HeaderPart>();
+            evenHeader.Header = new Header(new Paragraph(new Run(new Text("Even-page header"))));
+            evenHeader.Header.Save();
+
+            var defaultFooter = mainPart.AddNewPart<FooterPart>();
+            defaultFooter.Footer = new Footer(new Paragraph(new Run(new SimpleField { Instruction = "PAGE" })));
+            defaultFooter.Footer.Save();
+
+            var firstFooter = mainPart.AddNewPart<FooterPart>();
+            firstFooter.Footer = new Footer(new Paragraph(new Run(new Text("First-page footer"))));
+            firstFooter.Footer.Save();
+
+            var evenFooter = mainPart.AddNewPart<FooterPart>();
+            evenFooter.Footer = new Footer(new Paragraph(new Run(new Text("Even-page footer"))));
+            evenFooter.Footer.Save();
+
+            var sectionProperties = new SectionProperties(
+                new HeaderReference { Type = HeaderFooterValues.Default, Id = mainPart.GetIdOfPart(defaultHeader) },
+                new HeaderReference { Type = HeaderFooterValues.First, Id = mainPart.GetIdOfPart(firstHeader) },
+                new HeaderReference { Type = HeaderFooterValues.Even, Id = mainPart.GetIdOfPart(evenHeader) },
+                new FooterReference { Type = HeaderFooterValues.Default, Id = mainPart.GetIdOfPart(defaultFooter) },
+                new FooterReference { Type = HeaderFooterValues.First, Id = mainPart.GetIdOfPart(firstFooter) },
+                new FooterReference { Type = HeaderFooterValues.Even, Id = mainPart.GetIdOfPart(evenFooter) },
+                new TitlePage(),
+                new Columns { ColumnCount = 2 },
+                new PageSize { Width = 11906, Height = 16838 },
+                new PageMargin { Top = 1440, Bottom = 1440, Left = 1440, Right = 1440 });
+
+            mainPart.Document = new Document(new Body(
+                new Paragraph(new Run(new Text("Body text."))),
+                sectionProperties));
+
+            var settingsPart = mainPart.AddNewPart<DocumentSettingsPart>();
+            settingsPart.Settings = new Settings(new EvenAndOddHeaders());
+            settingsPart.Settings.Save();
+
+            mainPart.Document.Save();
+        }
+        stream.Position = 0;
+        return stream;
+    }
+
+    /// <summary>
+    /// A header containing one image-like drawing, whose own declared name is the given
+    /// string — the one signal HeadersFootersLogoExtractor's likelyCompanyLogo heuristic
+    /// actually reads. No real embedded picture bytes are needed: the extractor only
+    /// ever reads the drawing's own wp:docPr name/description metadata, never the image
+    /// content itself, so a bare DW.DocProperties element is a faithful, minimal fixture.
+    /// </summary>
+    public static MemoryStream WithHeaderImage(string name)
+    {
+        var stream = new MemoryStream();
+        using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document, autoSave: false))
+        {
+            var mainPart = doc.AddMainDocumentPart();
+            var headerPart = mainPart.AddNewPart<HeaderPart>();
+            headerPart.Header = new Header(new Paragraph(new Run(
+                new Drawing(new DW.Inline(new DW.DocProperties { Id = 1, Name = name })))));
+            headerPart.Header.Save();
+
+            var sectionProperties = new SectionProperties(
+                new HeaderReference { Type = HeaderFooterValues.Default, Id = mainPart.GetIdOfPart(headerPart) });
+
+            mainPart.Document = new Document(new Body(new Paragraph(new Run(new Text("Body text."))), sectionProperties));
+            mainPart.Document.Save();
+        }
+        stream.Position = 0;
+        return stream;
+    }
+
+    /// <summary>One inline image in the body (with or without alt text set), and optionally one Caption-styled paragraph.</summary>
+    public static MemoryStream WithFigure(string? altText, string? captionText)
+    {
+        var stream = new MemoryStream();
+        using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document, autoSave: false))
+        {
+            var mainPart = doc.AddMainDocumentPart();
+            var docProperties = new DW.DocProperties { Id = 1, Name = "Picture 1" };
+            if (altText is not null) docProperties.Description = altText;
+
+            var body = new Body(new Paragraph(new Run(new Drawing(new DW.Inline(docProperties)))));
+            if (captionText is not null)
+            {
+                body.Append(new Paragraph(
+                    new ParagraphProperties(new ParagraphStyleId { Val = "Caption" }),
+                    new Run(new Text(captionText))));
+            }
+
+            mainPart.Document = new Document(body);
+            mainPart.Document.Save();
+        }
+        stream.Position = 0;
+        return stream;
+    }
+
+    /// <summary>
+    /// A document with WriteProtection set — a genuinely different Word feature from
+    /// DocumentProtection (see WithReadOnlyProtection above): this is the "recommend
+    /// read-only" checkbox shown when opening the file, not enforced editing
+    /// restrictions.
+    /// </summary>
+    public static MemoryStream WithWriteProtection(bool recommended)
+    {
+        var stream = new MemoryStream();
+        using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document, autoSave: false))
+        {
+            var mainPart = doc.AddMainDocumentPart();
+            mainPart.Document = new Document(new Body(new Paragraph(new Run(new Text("Body text.")))));
+
+            var settingsPart = mainPart.AddNewPart<DocumentSettingsPart>();
+            settingsPart.Settings = new Settings(
+                new WriteProtection { Recommended = recommended ? OnOffValue.FromBoolean(true) : null });
+            settingsPart.Settings.Save();
+
+            mainPart.Document.Save();
+        }
+        stream.Position = 0;
+        return stream;
+    }
+
+    /// <summary>A document whose Settings declare a Word compatibility-mode setting.</summary>
+    public static MemoryStream WithCompatibilityMode(string value)
+    {
+        var stream = new MemoryStream();
+        using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document, autoSave: false))
+        {
+            var mainPart = doc.AddMainDocumentPart();
+            mainPart.Document = new Document(new Body(new Paragraph(new Run(new Text("Body text.")))));
+
+            var settingsPart = mainPart.AddNewPart<DocumentSettingsPart>();
+            settingsPart.Settings = new Settings(
+                new Compatibility(new CompatibilitySetting
+                {
+                    Name = new EnumValue<CompatSettingNameValues>(CompatSettingNameValues.CompatibilityMode),
+                    Uri = "http://schemas.microsoft.com/office/word",
+                    Val = value,
+                }));
+            settingsPart.Settings.Save();
+
+            mainPart.Document.Save();
+        }
+        stream.Position = 0;
+        return stream;
+    }
+
+    /// <summary>A document whose body run declares an explicit proofing language.</summary>
+    public static MemoryStream WithLanguage(string langTag)
+    {
+        var stream = new MemoryStream();
+        using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document, autoSave: false))
+        {
+            var mainPart = doc.AddMainDocumentPart();
+            var run = new Run(new RunProperties(new Languages { Val = langTag }), new Text("Body text."));
+            mainPart.Document = new Document(new Body(new Paragraph(run)));
+            mainPart.Document.Save();
+        }
+        stream.Position = 0;
+        return stream;
+    }
+
+    /// <summary>A Heading 1 style referenced by its display name with a space ("Heading 1"), not its bare id — the FillStyle fallback branch.</summary>
+    public static MemoryStream WithDisplayNameStyledHeading()
+    {
+        var stream = new MemoryStream();
+        using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document, autoSave: false))
+        {
+            var mainPart = doc.AddMainDocumentPart();
+            mainPart.Document = new Document(new Body(HeadingParagraph("MyCustomHeading1", "Purpose")));
+
+            var stylesPart = mainPart.AddNewPart<StyleDefinitionsPart>();
+            stylesPart.Styles = new Styles(new Style(
+                new StyleName { Val = "Heading 1" },
+                new StyleRunProperties(new RunFonts { Ascii = "Georgia" }, new Bold(), new Color { Val = "2E74B5" }))
+            {
+                Type = StyleValues.Paragraph,
+                StyleId = "MyCustomHeading1",
+            });
+            stylesPart.Styles.Save();
+
+            mainPart.Document.Save();
+        }
+        stream.Position = 0;
+        return stream;
+    }
+
+    /// <summary>Two distinct typefaces and two distinct non-black/white colours used directly on runs, not via any style.</summary>
+    public static MemoryStream WithMultipleTypefacesAndColors()
+    {
+        var stream = new MemoryStream();
+        using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document, autoSave: false))
+        {
+            var mainPart = doc.AddMainDocumentPart();
+            var run1 = new Run(new RunProperties(new RunFonts { Ascii = "Georgia" }, new Color { Val = "C00000" }), new Text("Red Georgia text."));
+            var run2 = new Run(new RunProperties(new RunFonts { Ascii = "Verdana" }, new Color { Val = "1F4E5F" }), new Text("Blue Verdana text."));
+            mainPart.Document = new Document(new Body(new Paragraph(run1), new Paragraph(run2)));
+            mainPart.Document.Save();
+        }
+        stream.Position = 0;
+        return stream;
+    }
+
+    /// <summary>A Normal-style body paragraph with an explicit named line-spacing value, centred, with space before/after.</summary>
+    public static MemoryStream WithLineSpacing(int lineValue)
+    {
+        var stream = new MemoryStream();
+        using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document, autoSave: false))
+        {
+            var mainPart = doc.AddMainDocumentPart();
+            var paragraphProperties = new ParagraphProperties(
+                new SpacingBetweenLines { Line = lineValue.ToString(), Before = "240", After = "120" },
+                new Justification { Val = JustificationValues.Center });
+            mainPart.Document = new Document(new Body(new Paragraph(paragraphProperties, new Run(new Text("Body text.")))));
+            mainPart.Document.Save();
+        }
+        stream.Position = 0;
+        return stream;
+    }
+
+    /// <summary>A table with no header-row signal at all: no TableHeader flag, no TableLook first-row flag, and no TableStyle.</summary>
+    public static MemoryStream WithTableNoHeader()
+    {
+        var stream = new MemoryStream();
+        using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document, autoSave: false))
+        {
+            var mainPart = doc.AddMainDocumentPart();
+            var row1 = new TableRow(new TableCell(new Paragraph(new Run(new Text("A")))));
+            var row2 = new TableRow(new TableCell(new Paragraph(new Run(new Text("B")))));
+            mainPart.Document = new Document(new Body(new Table(row1, row2)));
+            mainPart.Document.Save();
+        }
+        stream.Position = 0;
+        return stream;
     }
 
     private static Paragraph HeadingParagraph(string styleId, string text) =>

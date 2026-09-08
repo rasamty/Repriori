@@ -59,7 +59,12 @@ internal static class FontsParagraphsColorsExtractor
         var normalParagraph = body?.Elements<Paragraph>()
             .FirstOrDefault(p => (p.ParagraphProperties?.ParagraphStyleId?.Val?.Value ?? "Normal") is "Normal" or "BodyText");
 
-        JsonHelpers.Set(paragraphs, "bodyAlignment", normalParagraph?.ParagraphProperties?.Justification?.Val?.Value.ToString()?.ToLowerInvariant());
+        // Real bug, found writing a test that actually set Justification (no Phase 4
+        // fixture did): EnumValue<JustificationValues>.Value.ToString() prints
+        // "JustificationValues { }" in this SDK version, the same family of issue as
+        // DocumentProtection.Edit in DocumentPropertiesExtractor — .InnerText reads the
+        // real underlying XML attribute text ("center") instead.
+        JsonHelpers.Set(paragraphs, "bodyAlignment", normalParagraph?.ParagraphProperties?.Justification?.Val?.InnerText?.ToLowerInvariant());
         var spacing = normalParagraph?.ParagraphProperties?.SpacingBetweenLines;
         JsonHelpers.Set(paragraphs, "spaceAfterPt", JsonHelpers.TwipToPt(spacing?.After));
         JsonHelpers.Set(paragraphs, "spaceBeforePt", JsonHelpers.TwipToPt(spacing?.Before));

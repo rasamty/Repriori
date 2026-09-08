@@ -58,4 +58,35 @@ public class PageExtractorTests
 
         Assert.Equal(25.4, root["page"]!["marginsMm"]!["top"]!.GetValue<double>(), precision: 1);
     }
+
+    [Fact]
+    public void Extract_reports_different_first_page_header_footer_odd_even_headers_and_multiple_columns()
+    {
+        using var docx = TestDocxBuilder.WithHeadersFootersAndPageFeatures();
+        using var word = WordprocessingDocument.Open(docx, isEditable: false);
+        var root = new JsonObject();
+
+        PageExtractor.Extract(word, root);
+        var page = root["page"]!;
+
+        Assert.True(page["differentFirstPageHeaderFooter"]!.GetValue<bool>());
+        Assert.True(page["differentOddEvenHeaderFooter"]!.GetValue<bool>());
+        Assert.Equal(2, page["columns"]!.GetValue<int>());
+        Assert.Equal(1, page["sectionCount"]!.GetValue<int>());
+    }
+
+    [Fact]
+    public void Extract_reports_a_single_column_and_no_odd_even_headers_for_a_plain_document()
+    {
+        using var docx = TestDocxBuilder.WithPageSize(A4WidthTwips, A4HeightTwips, marginTopTwips: 1440);
+        using var word = WordprocessingDocument.Open(docx, isEditable: false);
+        var root = new JsonObject();
+
+        PageExtractor.Extract(word, root);
+        var page = root["page"]!;
+
+        Assert.False(page["differentFirstPageHeaderFooter"]!.GetValue<bool>());
+        Assert.False(page["differentOddEvenHeaderFooter"]!.GetValue<bool>());
+        Assert.Equal(1, page["columns"]!.GetValue<int>());
+    }
 }
