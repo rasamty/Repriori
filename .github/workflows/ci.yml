@@ -1,4 +1,4 @@
-# CI — build and test the whole solution.
+# CI — build and test the whole solution, then gate coverage on pull requests.
 #
 # Right now "the whole solution" and "Repriori.DocProfile" are almost the same
 # thing (Repriori.slnx only contains DocProfile, its CLI, and its tests) — this
@@ -7,6 +7,14 @@
 # add more packages to the same solution. If a future milestone ever wants a
 # faster, narrower check for one package alone, that's a new workflow file to
 # add then, not a reason to rewrite this one now.
+#
+# The coverage-gate job is deliberately separate from build-and-test, and
+# deliberately only runs for pull_request, not push — see Part 5.2 of
+# docs/Repriori_Plan_and_Design.docx. A push to a feature branch (the "DEV"
+# trigger) records coverage as a downloadable artifact only; a pull request into
+# main (the "QA" trigger) additionally gates on it, using the QA GitHub
+# Environment created in Milestone 0 purely as a visible policy gate — no actual
+# deployment happens here, that's still Milestone 9's job.
 name: CI
 
 on:
@@ -42,8 +50,8 @@ jobs:
       - name: Build
         run: dotnet build Repriori.slnx --no-restore --configuration Release
 
-      - name: Test
-        run: dotnet test Repriori.slnx --no-build --configuration Release --logger "trx;LogFileName=test-results.trx" --results-directory TestResults
+      - name: Test (with coverage)
+        run: dotnet test Repriori.slnx --no-build --configuration Release --logger "trx;LogFileName=test-results.trx" --results-directory TestResults --collect:"XPlat Code Coverage"
 
       - name: Upload test results
         # if: always() means this still runs (and the results are still
@@ -54,3 +62,65 @@ jobs:
         with:
           name: test-results
           path: TestResults
+
+      - name: Generate coverage summary
+        # Turns coverlet's raw coverage.cobertura.xml into a JSON summary the
+        # coverage-gate job (below) can actually read a number out of, plus a
+        # plain-text version for a human glancing at the artifact. Runs even
+        # when tests failed, same reasoning as the test-results upload above.
+        if: always()
+        run: |
+          dotnet tool install -g dotnet-reportgenerator-globaltool
+          $cobertura = Get-ChildItem -Path TestResults -Filter coverage.cobertura.xml -Recurse | Select-Object -First 1 -ExpandProperty FullName
+          reportgenerator "-reports:$cobertura" "-targetdir:TestResults/CoverageReport" "-reporttypes:JsonSummary;TextSummary"
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: TestResults/CoverageReport
+
+  coverage-gate:
+    # Only for a pull request into main — a push to a feature branch records
+    # coverage (the job above) but doesn't gate on it. See the file header.
+    if: github.event_name == 'pull_request'
+    needs: build-and-test
+    runs-on: windows-latest
+    # Targets the QA GitHub Environment created empty in Milestone 0. Nothing
+    # is actually deployed here — this reuses that environment purely so the
+    # coverage gate carries a real, visible "QA" check using infrastructure
+    # that already exists, rather than inventing a new concept. Milestone 9
+    # replaces this job's body with a real deployment behind the same gate.
+    environment: QA
+    permissions:
+      issues: write
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Download coverage report
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-report
+          path: TestResults/CoverageReport
+
+      - name: Check coverage against policy
+        id: gate
+        run: pwsh scripts/Check-CoverageGate.ps1 -SummaryJsonPath TestResults/CoverageReport/Summary.json -PolicyJsonPath src/Repriori.DocProfile/coverage-policy.json
+
+      - name: File an issue when the gate fails
+        # Only runs when the gate step itself failed (not, say, if checkout
+        # failed for an unrelated reason) — see Part 5.2: a failing gate blocks
+        # the merge via the required-status-check rule, and this is the
+        # "triggers you to sort it" part, with the exact shortfall attached
+        # rather than just a red X.
+        if: always() && steps.gate.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create `
+            --title "Coverage gate failed on PR #${{ github.event.pull_request.number }}" `
+            --body-file coverage-gate-failure.md `
+            --assignee "${{ github.actor }}"

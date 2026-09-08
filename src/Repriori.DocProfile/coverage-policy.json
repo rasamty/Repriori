@@ -1,0 +1,6 @@
+{
+  "assembly": "Repriori.DocProfile",
+  "lineMinPercent": 80,
+  "branchMinPercent": 65,
+  "notes": "Read by scripts/Check-CoverageGate.ps1, called from the coverage-gate job in .github/workflows/ci.yml. Thresholds apply to this whole assembly, not per class -- see Part 5.2 of docs/Repriori_Plan_and_Design.docx for why, and for how a gate failure is handled (it blocks the merge and files an issue; it never triggers automatic test-writing). Not an EmbeddedResource -- nothing in the compiled library reads this, only CI tooling."
+}
