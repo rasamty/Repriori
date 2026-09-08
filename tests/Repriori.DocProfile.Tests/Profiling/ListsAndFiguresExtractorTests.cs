@@ -6,14 +6,15 @@ using Xunit;
 
 namespace Repriori.DocProfile.Tests.Profiling;
 
-// Kept lighter than the other extractors on purpose. Both ListsExtractor and
-// FiguresExtractor mostly answer questions ("is there any numbering," "how many
-// images") that need real bullet/numbering XML or a real embedded image to test
-// beyond this — synthesising those by hand adds a lot of fixture complexity for
-// a proportionally small amount of extra risk, since the underlying null-safety
-// and counting logic they use is already covered by the other extractor tests.
-// What's tested here is the genuinely important part: the "nothing present"
-// baseline is correct.
+// Kept lighter than the other extractors on purpose. ListsExtractor mostly answers a
+// question ("is there any numbering") that needs real numbering.xml wiring to test
+// beyond this, and hasBullets is permanently null regardless (see its own code
+// comment) — nothing more to prove there without a materially bigger fixture.
+// FiguresExtractor's "an image genuinely exists" cases turned out not to need real
+// embedded picture bytes after all (the extractor only reads a drawing's own declared
+// name/description, never its content) — see FiguresExtractorTests.cs for those.
+// What's tested here is the baseline this file was always meant to prove: the
+// "nothing present" case is correct for both extractors.
 public class ListsAndFiguresExtractorTests
 {
     [Fact]

@@ -34,4 +34,18 @@ public class TablesExtractorTests
         Assert.Equal(2, table["rowCount"]!.GetValue<int>());
         Assert.True(table["hasHeaderRow"]!.GetValue<bool>());
     }
+
+    [Fact]
+    public void Extract_reports_no_header_row_when_no_header_signal_is_present()
+    {
+        using var docx = TestDocxBuilder.WithTableNoHeader();
+        using var word = WordprocessingDocument.Open(docx, isEditable: false);
+        var root = new JsonObject();
+
+        TablesExtractor.Extract(word, root);
+        var table = root["tables"]!["items"]![0]!;
+
+        Assert.False(table["hasHeaderRow"]!.GetValue<bool>());
+        Assert.Null(table["styleName"]);
+    }
 }

@@ -67,4 +67,60 @@ public class DocumentPropertiesExtractorTests
         Assert.True(document["isProtected"]!.GetValue<bool>());
         Assert.Equal("readOnly", document["protectionType"]!.GetValue<string>());
     }
+
+    [Fact]
+    public void Extract_reports_write_reservation_and_recommendation_when_write_protection_is_set()
+    {
+        // WriteProtection is a genuinely different Word feature from DocumentProtection
+        // (the "recommend read-only" prompt on open, vs. enforced editing restrictions)
+        // — no Phase 4 fixture set this at all, which is exactly why it was still an
+        // untested branch going into this pass.
+        using var docx = TestDocxBuilder.WithWriteProtection(recommended: true);
+        using var word = WordprocessingDocument.Open(docx, isEditable: false);
+        var root = new JsonObject();
+
+        DocumentPropertiesExtractor.Extract(word, root);
+        var document = root["document"]!;
+
+        Assert.True(document["writeReservation"]!.GetValue<bool>());
+        Assert.True(document["readOnlyRecommended"]!.GetValue<bool>());
+    }
+
+    [Fact]
+    public void Extract_reports_write_reservation_without_a_recommendation_flag()
+    {
+        using var docx = TestDocxBuilder.WithWriteProtection(recommended: false);
+        using var word = WordprocessingDocument.Open(docx, isEditable: false);
+        var root = new JsonObject();
+
+        DocumentPropertiesExtractor.Extract(word, root);
+        var document = root["document"]!;
+
+        Assert.True(document["writeReservation"]!.GetValue<bool>());
+        Assert.Null(document["readOnlyRecommended"]);
+    }
+
+    [Fact]
+    public void Extract_reports_the_compatibility_mode_when_set()
+    {
+        using var docx = TestDocxBuilder.WithCompatibilityMode("15");
+        using var word = WordprocessingDocument.Open(docx, isEditable: false);
+        var root = new JsonObject();
+
+        DocumentPropertiesExtractor.Extract(word, root);
+
+        Assert.Equal("15", root["document"]!["compatibilityMode"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void Extract_reports_the_first_non_empty_language_found()
+    {
+        using var docx = TestDocxBuilder.WithLanguage("en-GB");
+        using var word = WordprocessingDocument.Open(docx, isEditable: false);
+        var root = new JsonObject();
+
+        DocumentPropertiesExtractor.Extract(word, root);
+
+        Assert.Equal("en-GB", root["document"]!["language"]!.GetValue<string>());
+    }
 }
